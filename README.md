@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -68,3 +69,7 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+=======
+# dieta-personalizada
+Sistemas Full-Stack finalizados! Desenvolvi um app Questionário em Flutter (Mobile) e um WebService de Endereços em ASP.NET C# integrado ao SQL Server. Demonstro lógica de estado em Dart, consumo de API, e UI avançada com Tailwind CSS, incluindo um planejador de dieta com lógica de treino e validações.
+>>>>>>> df2d8e3de443b47d14ab9f2fc5e7bddfb4e33596
