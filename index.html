@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Dieta Personalizada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        
+        /* Adicionando gradientes de destaque */
+        .gradient-green { background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); color: white; }
+        .dark .gradient-green { background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); } 
+
+        /* === ESTILOS GERAIS PARA DARK MODE === */
+        .dark {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .dark .bg-white {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        .dark .bg-gray-100 {
+            background-color: #1a202c;
+        }
+        .dark input, .dark select {
+            background-color: #4a5568;
+            border-color: #4f5b68;
+            color: #e2e8f0;
+        }
+        .dark .shadow-2xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .dark .gradient-card { 
+            background-color: #1f2937; 
+        }
+        /* CORREÇÃO UX: Cor do texto no card de caloria deve ser clara no modo escuro */
+        .dark .calorie-text-light {
+             color: #FFF !important;
+        }
+        .dark .calorie-text-normal {
+             color: #E2E8F0 !important;
+        }
+
+
+        /* Estilo para cards de treino e macros */
+        .info-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+        }
+
+        /* === ESTILOS PARA IMPRESSÃO (PDF) === */
+        @media print {
+            /* Esconde o formulário (coluna de input) */
+            #input-column { 
+                display: none !important; 
+            }
+            
+            /* Maximiza a área de resultados */
+            #results-column {
+                grid-column: span 3 / span 3 !important;
+            }
+
+            /* Garante fundo e texto claros para economia de tinta e legibilidade */
+            body, .dark { 
+                background-color: #fff !important; 
+                color: #000 !important; 
+            }
+            .dark .bg-white, .dark .bg-gray-800 { 
+                background-color: #fff !important; 
+                color: #000 !important; 
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+            }
+            /* Garante que o texto seja sempre preto */
+            .text-gray-700, .dark .text-gray-700, .dark .text-gray-200 { 
+                color: #000 !important; 
+            }
+            /* Remove a cor de fundo das opções */
+            .bg-green-50, .dark .bg-green-900\/50 {
+                background-color: #f0f0f0 !important;
+            }
+            
+            /* Remove botões e cabeçalho na impressão */
+            header, .flex.justify-end, .flex.justify-between:has(button) { 
+                display: none !important; 
+            }
+            
+            /* Ajusta a margem do container principal */
+            .max-w-6xl {
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 p-4 sm:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+        
+        <header class="p-6 bg-indigo-600 text-white flex justify-between items-center shadow-md">
+            <h1 class="text-2xl font-extrabold flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                Sistema de Dieta Personalizada
+            </h1>
+            <button id="dark-mode-toggle" class="p-2 rounded-full hover:bg-indigo-700 transition duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </button>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8 p-6 lg:p-10">
+
+            <div id="input-column" class="lg:col-span-1 p-6 bg-gray-100 rounded-xl shadow-inner h-fit sticky top-8">
+                <div class="flex items-center text-xl font-bold mb-4 mt-2 text-gray-700 border-b-2 border-gray-200 pb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    1. Seus Dados e Objetivo
+                </div>
+                
+                <form id="diet-form" class="space-y-4">
+                    
+                    <input type="text" id="name" placeholder="Seu Nome (Obrigatório)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150" required/>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                            <input type="number" id="weight" value="75" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150"/>
+                        </div>
+                        <div>
+                            <label for="height" class="block text-sm font-medium text-gray-700 mb-1">Altura (cm)</label>
+                            <input type="number" id="height" value="175" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150"/>
+                        </div>
+                        <div>
+                            <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Idade</label>
+                            <input type="number" id="age" value="25" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150"/>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="sex" class="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
+                        <select id="sex" class="w-full p-3 border border-gray-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150">
+                            <option value="male">Masculino</option>
+                            <option value="female">Feminino</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="goal" class="block text-sm font-medium text-gray-700 mb-1">Objetivo</label>
+                        <select id="goal" class="w-full p-3 border border-gray-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150">
+                            <option value="maintain">Manter Peso</option>
+                            <option value="mass">Ganhar Massa (+15%)</option>
+                            <option value="loss">Perder Peso (-15%)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="activityLevel" class="block text-sm font-medium text-gray-700 mb-1">Nível de Atividade</label>
+                        <select id="activityLevel" class="w-full p-3 border border-gray-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150">
+                            <option value="sedentary">Sedentário (Pouco/Nenhum exercício)</option>
+                            <option value="light">Leve (1-3 dias/semana)</option>
+                            <option value="moderate">Moderado (3-5 dias/semana)</option>
+                            <option value="active">Ativo (6-7 dias/semana)</option>
+                            <option value="veryActive">Muito Ativo (Treinos intensos diários)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="trainingLocation" class="block text-sm font-medium text-gray-700 mb-1">Onde Você Treina?</label>
+                        <select id="trainingLocation" class="w-full p-3 border border-gray-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 transition duration-150">
+                            <option value="gym">Academia</option>
+                            <option value="home">Em Casa (Peso Corporal/Banda)</option>
+                        </select>
+                    </div>
+                        
+                    <div class="flex items-center text-xl font-bold mb-4 pt-4 text-gray-700 border-b-2 border-gray-200 pb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        2. Restrições e Preferências
+                    </div>
+                    <div id="preferences-container" class="space-y-2">
+                        </div>
+
+                    <button type="submit" id="generate-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-indigo-500/50">
+                        Gerar Plano Alimentar
+                    </button>
+                </form>
+            </div>
+
+            <div id="results-column" class="lg:col-span-2">
+                <div id="initial-message" class="p-10 text-center bg-gray-50 rounded-xl shadow-lg border-2 border-dashed border-gray-300">
+                    <p class="text-xl font-semibold text-gray-500">
+                        Preencha seus dados e clique em "Gerar Plano Alimentar" para visualizar seu resumo calórico e sugestão de dieta.
+                    </p>
+                </div>
+
+                <div id="diet-results" class="space-y-10 hidden">
+                    </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // === BANCO DE DADOS E CONFIGURAÇÕES ===
+
+        const foodDatabase = [
+            // Ganho de Massa
+            { id: 1, type: 'mass', name: "Peito de Frango (100g)", calories: 165, macros: { P: 31, C: 0, G: 3.6 }, tags: ['poultry', 'protein', 'day_meal'], substitutes: ["Atum em Água (100g)", "Ovos (3 unid)"] },
+            { id: 10, type: 'mass', name: "Carne Moída Magra (100g)", calories: 180, macros: { P: 26, C: 0, G: 8 }, tags: ['red_meat', 'protein', 'day_meal'], substitutes: ["Peito de Frango", "Lentilha (cozida)"] },
+            { id: 2, type: 'mass', name: "Arroz Branco (100g)", calories: 130, macros: { P: 2.7, C: 28, G: 0.3 }, tags: ['grain', 'carb', 'day_meal'], substitutes: ["Arroz Integral (100g)", "Batata Doce (100g)"] },
+            { id: 18, type: 'maintain', name: "Arroz Integral (100g)", calories: 120, macros: { P: 2.6, C: 25, G: 1.0 }, tags: ['grain', 'carb', 'day_meal', 'integral'], substitutes: ["Arroz Branco (100g)", "Batata Doce (100g)"] }, 
+            { id: 3, type: 'mass', name: "Ovos Cozidos (unidade)", calories: 78, macros: { P: 6, C: 0.6, G: 5 }, tags: ['egg', 'protein'], substitutes: ["Queijo Minas (50g)", "Whey Protein (30g)"] },
+            { id: 11, type: 'mass', name: "Pão Francês (50g)", calories: 135, macros: { P: 4, C: 25, G: 2 }, tags: ['grain', 'carb'], substitutes: ["Pão Integral (50g)", "Tapioca (1 unid)"] },
+            { id: 19, type: 'maintain', name: "Pão Integral (50g)", calories: 110, macros: { P: 5, C: 19, G: 2 }, tags: ['grain', 'carb', 'integral'], substitutes: ["Pão Francês (50g)", "Tapioca (1 unid)"] }, 
+            { id: 14, type: 'mass', name: "Banana (100g)", calories: 105, macros: { P: 1.3, C: 27, G: 0.4 }, tags: ['fruit', 'carb'], substitutes: ["Maçã", "Pera"] },
+            
+            // Perda de Peso
+            { id: 5, type: 'loss', name: "Filé de Tilápia Assada (100g)", calories: 128, macros: { P: 26, C: 0, G: 2 }, tags: ['fish', 'protein', 'day_meal'], substitutes: ["Frango Desfiado", "Peixe Branco"] },
+            { id: 6, type: 'loss', name: "Salada de Folhas Verdes", calories: 20, macros: { P: 1, C: 3, G: 0 }, tags: ['vegetable', 'carb', 'day_meal'], substitutes: ["Brócolis Cozido"] },
+            { id: 7, type: 'loss', name: "Aveia (30g)", calories: 117, macros: { P: 5, C: 18, G: 2 }, tags: ['grain', 'carb'], substitutes: ["Chia (15g)"] },
+            { id: 15, type: 'loss', name: "Abacate (50g)", calories: 80, macros: { P: 1, C: 4, G: 7 }, tags: ['fat'], substitutes: ["Castanhas"] },
+            
+            // Manutenção/Geral
+            // CORREÇÃO 1: Adicionado 'snack_only' para evitar Iogurte no Almoço/Jantar
+            { id: 8, type: 'maintain', name: "Iogurte Natural (170g)", calories: 100, macros: { P: 8, C: 8, G: 4 }, tags: ['dairy', 'lactose', 'protein', 'snack_only'], substitutes: ["Leite de Amêndoas (200ml)"] },
+            { id: 9, type: 'maintain', name: "Frutas Variadas (100g)", calories: 60, macros: { P: 0.5, C: 15, G: 0.5 }, tags: ['fruit', 'carb', 'snack_only'], substitutes: ["Mix de Castanhas (15g)"] },
+            { id: 12, type: 'maintain', name: "Feijão Cozido (100g)", calories: 76, macros: { P: 5, C: 14, G: 0.5 }, tags: ['legume', 'carb', 'day_meal'], substitutes: ["Lentilha (100g)"] },
+            { id: 13, type: 'maintain', name: "Cuscuz (100g)", calories: 112, macros: { P: 3.8, C: 23, G: 0.2 }, tags: ['grain', 'carb'], substitutes: ["Pão Integral"] },
+            { id: 16, type: 'maintain', name: "Queijo Minas Frescal (50g)", calories: 80, macros: { P: 10, C: 1, G: 4 }, tags: ['dairy', 'lactose', 'protein', 'snack_only'], substitutes: ["Ricota", "Ovo"] },
+            { id: 17, type: 'maintain', name: "Salada de Tomate/Pepino", calories: 30, macros: { P: 1, C: 5, G: 0 }, tags: ['vegetable', 'carb', 'day_meal'], substitutes: ["Cenoura Cozida"] },
+        ];
+
+        const preferenceOptions = [
+            { name: 'dairy_free', label: 'Sem Laticínios', tagsToExclude: ['dairy', 'lactose'] },
+            { name: 'no_red_meat', label: 'Sem Carne Vermelha', tagsToExclude: ['red_meat'] },
+            { name: 'no_poultry', label: 'Sem Aves', tagsToExclude: ['poultry'] },
+            { name: 'no_fish', label: 'Sem Peixe', tagsToExclude: ['fish'] },
+            { name: 'vegetarian', label: 'Vegetariano', tagsToExclude: ['poultry', 'red_meat', 'fish', 'egg'] },
+            // NOVO: Opção de Priorizar Integrais
+            { name: 'only_integral', label: 'Priorizar Integrais', tagsToExclude: [] }, 
+        ];
+        
+        // MODIFICADO: Adicionada a chave restrictedTags para regras culturais
+        const MealSchedule = [
+            { name: "Café da Manhã", time: "07:00", factor: 0.20, proteinNeeds: true, carbNeeds: true, generalNeeds: true, restrictedTags: ['day_meal', 'snack_only'] },
+            { name: "Lanche da Manhã", time: "10:00", factor: 0.08, proteinNeeds: true, carbNeeds: true, generalNeeds: false, restrictedTags: ['day_meal'] },
+            { name: "Almoço", time: "13:00", factor: 0.25, proteinNeeds: true, carbNeeds: true, generalNeeds: true, restrictedTags: ['snack_only'] },
+            { name: "Lanche da Tarde", time: "16:00", factor: 0.08, proteinNeeds: true, carbNeeds: true, generalNeeds: false, restrictedTags: ['day_meal'] },
+            { name: "Jantar", time: "19:00", factor: 0.25, proteinNeeds: true, carbNeeds: true, generalNeeds: true, restrictedTags: ['snack_only'] },
+            { name: "Ceia", time: "22:00", factor: 0.14, proteinNeeds: true, carbNeeds: false, generalNeeds: true, restrictedTags: ['day_meal', 'snack_only'] },
+        ];
+
+        // NOVO: BANCO DE DADOS DE TREINOS
+        const workoutDatabase = [
+            // TREINO DE PEITO
+            { muscle: 'Peito', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Supino Reto com Barra", "Supino Inclinado com Halteres", "Crucifixo Máquina/Cabo", "Flexão (como aquecimento)"] },
+            { muscle: 'Peito', location: 'home', focus: 'geral', age_min: 18, exercises: ["Flexão (Mãos no chão)", "Flexão com Pés Elevados (Avançado)", "Flexão Declinada (Iniciante)", "Abertura com Elástico"] },
+        
+            // TREINO DE COSTAS
+            { muscle: 'Costas', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Puxada Alta (Lateral)", "Remada Baixa (Triângulo)", "Pulldown com Corda (Tríceps)", "Hiperextensão (Lombar)"] },
+            { muscle: 'Costas', location: 'home', focus: 'geral', age_min: 18, exercises: ["Remada Invertida (Mesa ou Cadeira)", "Ponte (Glúteo/Lombar)", "Super-Homem", "Pull-up (Se disponível)"] },
+            
+            // TREINO DE PERNAS (Quadríceps e Isquiotibiais)
+            { muscle: 'Perna', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Agachamento Livre com Barra", "Leg Press 45°", "Extensão de Pernas (Cadeira)", "Flexão de Pernas (Deitado)"] },
+            { muscle: 'Perna', location: 'home', focus: 'geral', age_min: 18, exercises: ["Agachamento Livre (Peso Corporal)", "Afundo/Avanço", "Elevação Pélvica (Glúteo)", "Panturrilha em Degrau"] },
+
+            // TREINO DE OMBRO
+            { muscle: 'Ombro', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Desenvolvimento com Halteres (Sentado)", "Elevação Lateral com Halteres", "Elevação Frontal com Halteres", "Remada Alta"] },
+            { muscle: 'Ombro', location: 'home', focus: 'geral', age_min: 18, exercises: ["Flexão em Parada de Mão (Paredes)", "Desenvolvimento P/C (Com Elástico)", "Elevação Lateral (Com Garrafas/Pesos Leves)"] },
+
+            // TREINO DE BRAÇO (Bíceps e Tríceps)
+            { muscle: 'Bíceps', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Rosca Direta com Barra", "Rosca Alternada com Halteres", "Rosca Concentrada"] },
+            { muscle: 'Tríceps', location: 'gym', focus: 'geral', age_min: 18, exercises: ["Tríceps Pulley (Corda)", "Tríceps Testa com Halteres", "Extensão Tríceps Unilateral"] },
+            { muscle: 'Bíceps', location: 'home', focus: 'geral', age_min: 18, exercises: ["Rosca Bicep Invertida (Peso Corporal)", "Rosca com Mochila/Pesos", "Rosca com Elástico"] },
+            { muscle: 'Tríceps', location: 'home', focus: 'geral', age_min: 18, exercises: ["Tríceps no Banco/Cadeira (Mergulho)", "Tríceps Testa com Halteres", "Extensão Tríceps Acima da Cabeça"] },
+
+            // TREINO ESPECIAL: FOCO EM MOBILIDADE/ESTABILIDADE (50+)
+            { muscle: 'Perna', location: 'home', focus: 'estabilidade', age_min: 50, exercises: ["Mini Agachamento (Com Apoio)", "Levantamento de Calcanhares (Panturrilha)", "Passada Lateral (Banda Elástica)", "Caminhada na Ponta do Pé"] },
+            { muscle: 'Costas', location: 'home', focus: 'estabilidade', age_min: 50, exercises: ["Remada com Elástico (Sentado)", "Elevação do Braço (Deitado)", "Ponte (Isometria)"] },
+        ];
+
+
+        const activityFactors = {
+            sedentary: 1.2,
+            light: 1.375,
+            moderate: 1.55,
+            active: 1.725,
+            veryActive: 1.9,
+        };
+        
+        // === ELEMENTOS DO DOM ===
+        const dietForm = document.getElementById('diet-form');
+        const initialMessage = document.getElementById('initial-message');
+        const dietResultsContainer = document.getElementById('diet-results');
+        const preferencesContainer = document.getElementById('preferences-container');
+        const bodyElement = document.body;
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+
+        let currentDietData = null;
+        let userPreferences = [];
+        
+        // --- Dark Mode Logic ---
+        function toggleDarkMode() {
+            bodyElement.classList.toggle('dark');
+        }
+
+        // --- Funções de Renderização e Inicialização ---
+
+        function renderPreferences() {
+            preferencesContainer.innerHTML = preferenceOptions.map(option => `
+                <label for="${option.name}" class="flex items-center cursor-pointer p-2 bg-white rounded-lg shadow-sm hover:bg-gray-50 transition duration-150">
+                    <input type="checkbox" id="${option.name}" data-preference="${option.name}" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500" ${userPreferences.includes(option.name) ? 'checked' : ''}>
+                    <span class="ml-3 text-sm font-medium text-gray-700">${option.label}</span>
+                </label>
+            `).join('');
+
+            preferencesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const prefName = e.target.dataset.preference;
+                    if (e.target.checked) {
+                        userPreferences.push(prefName);
+                    } else {
+                        userPreferences = userPreferences.filter(p => p !== prefName);
+                    }
+                });
+            });
+        }
+
+        function filterFoods(goal, excludedTags, age) {
+            let priorityTags = [];
+            let onlyIntegral = userPreferences.includes('only_integral'); // Verifica se o checkbox 'Priorizar Integrais' está marcado
+            
+            if (age >= 18 && age <= 30) {
+                priorityTags = ['protein', 'carb']; 
+            } else if (age > 50) {
+                priorityTags = ['fish', 'vegetable', 'egg'];
+            }
+
+            return foodDatabase.filter(f => {
+                const matchesGoal = f.type === goal || f.type === 'maintain';
+                const isExcluded = f.tags && f.tags.some(tag => excludedTags.includes(tag));
+                
+                let isPrioritized = true;
+                if (age > 50) {
+                    isPrioritized = !f.tags.includes('red_meat'); 
+                }
+
+                // LÓGICA DE FILTRO INTEGRAL: Se 'onlyIntegral' for true, o alimento deve ser integral ou não ser uma opção branca com alternativa integral
+                let passesIntegralCheck = true;
+                if (onlyIntegral && f.tags.includes('carb') && !f.tags.includes('integral')) {
+                    // Exclui especificamente arroz branco e pão francês se a opção integral estiver marcada
+                    if (f.name.includes("Arroz Branco") || f.name.includes("Pão Francês")) {
+                        passesIntegralCheck = false;
+                    }
+                }
+
+                return matchesGoal && !isExcluded && isPrioritized && passesIntegralCheck;
+            }).sort((a, b) => {
+                if (age >= 18 && age <= 30) {
+                    const aScore = a.tags.filter(tag => priorityTags.includes(tag)).length;
+                    const bScore = b.tags.filter(tag => priorityTags.includes(tag)).length;
+                    return bScore - aScore;
+                }
+                return 0;
+            });
+        }
+
+        function generateMealPlan(finalCals, goal, excludedTags, age) {
+            const availableFoods = filterFoods(goal, excludedTags, age);
+            const plan = [];
+            const numOptions = 3;
+
+            // Função para buscar um item aleatório do banco de combinações
+            const getComboItem = (type) => {
+                const combo = MealCombos.find(c => c.type === type);
+                if (!combo) return null;
+                const randomIndex = Math.floor(Math.random() * combo.foods.length);
+                const selectedFood = combo.foods[randomIndex];
+
+                // Extração de porção para renderização (adaptado do código anterior)
+                let portion = 1; 
+                let unit = 'unidade';
+                if (selectedFood.includes('(g)')) {
+                    portion = parseInt(selectedFood.match(/\((\d+)g\)/)?.[1] || 100);
+                    unit = 'g';
+                } else if (selectedFood.includes('(unidades)')) {
+                    unit = 'unidades';
+                } else if (selectedFood.includes('(colheres)')) {
+                    unit = 'colheres';
+                } else if (selectedFood.includes('scoop')) {
+                    unit = 'scoop';
+                }
+                
+                return { food: selectedFood, portion, unit: unit, substitutes: combo.substitutes || [] };
+            };
+            
+            // CORREÇÃO: Função para buscar item de foodDatabase e garantir exclusão entre opções
+            const getUniqueFoodFromDB = (filterTags, usedIds) => {
+                const restricted = meal.restrictedTags || [];
+                
+                const filteredList = availableFoods.filter(f => 
+                    !usedIds.has(f.id) &&
+                    f.tags.some(tag => filterTags.includes(tag)) &&
+                    !f.tags.some(tag => restricted.includes(tag))
+                );
+
+                if (filteredList.length === 0) return null;
+                
+                const randomIndex = Math.floor(Math.random() * filteredList.length);
+                const selectedFood = filteredList[randomIndex];
+                
+                usedIds.add(selectedFood.id);
+                return selectedFood;
+            }
+
+
+            MealSchedule.forEach(meal => {
+                const requiredCals = Math.round(finalCals * meal.factor);
+                const mealOptions = [];
+                
+                // Rastreia IDs de alimentos usados em TODAS as 3 opções desta refeição (para evitar repetição total)
+                const usedFoodIdsInMeal = new Set(); 
+
+                for (let i = 0; i < numOptions; i++) {
+                    const mealFoods = [];
+                    
+                    // Rastreia IDs para garantir a diversidade DENTRO desta opção
+                    const currentOptionUsedIds = new Set(); 
+
+                    // --- Lógica de Combinação Estruturada ---
+
+                    if (meal.name === "Café da Manhã") {
+                        // OPÇÃO 1: Ovos + Pão/Tapioca + Fruta
+                        const prot = getComboItem('breakfast_protein');
+                        if (prot) mealFoods.push(prot);
+
+                        const carb = getComboItem('breakfast_carb');
+                        if (carb) mealFoods.push(carb);
+
+                        mealFoods.push({ food: "1 Fruta (Banana, Maçã ou Mamão)", portion: 1, unit: 'unidade', substitutes: ["Iogurte Natural (170g)"] });
+                        
+                        // Garante que essa combinação base não seja repetida nas outras opções da mesma refeição
+                        if (prot && carb) usedFoodIdsInMeal.add(`${prot.food}-${carb.food}`); 
+
+                    } else if (meal.name === "Almoço" || meal.name === "Jantar") {
+                        
+                        // 1. Proteína Principal (Frango/Carne)
+                        const prot = getComboItem('protein_main');
+                        if (prot) mealFoods.push(prot);
+                        
+                        // 2. Carboidrato Principal (Arroz/Batata)
+                        const carb = getComboItem('carb_main');
+                        if (carb) mealFoods.push(carb);
+                        
+                        // 3. Feijão / Legumes
+                        const legume = getComboItem('legume_veg');
+                        if (legume) mealFoods.push(legume);
+                        
+                        // 4. Salada
+                        mealFoods.push({ food: "Salada e Legumes à vontade + 1 fio de Azeite", portion: 1, unit: 'porção' });
+                        
+                    } else if (meal.name === "Lanche da Manhã") {
+                        // Lanche Manhã: Iogurte e Castanhas
+                        mealFoods.push({ food: "1 Iogurte Natural (170g)", portion: 1, unit: 'unidade' });
+                        mealFoods.push({ food: "1 punhado pequeno de Castanhas (8 a 10 unidades)", portion: 1, unit: 'porção' });
+                    
+                    } else if (meal.name === "Lanche da Tarde") {
+                        // Lanche da Tarde / Pré-treino
+                        const carb = getComboItem('pre_workout');
+                        if (carb) mealFoods.push(carb);
+                        mealFoods.push({ food: "1 Sanduíche Natural ou 1 scoop de Whey", portion: 1, unit: 'unidade' });
+
+                    } else if (meal.name === "Ceia") {
+                        // Ceia: Ovos ou Iogurte/Leite
+                        mealFoods.push({ food: "1 copo de Leite Desnatado OU 2 ovos cozidos", portion: 1, unit: 'porção' });
+                    }
+                    
+                    if (mealFoods.length > 0) {
+                        mealOptions.push(mealFoods);
+                    } else {
+                        mealOptions.push([{ food: "Nenhuma sugestão compatível. Verifique restrições.", portion: 0, unit: '', substitutes: [] }]);
+                    }
+                }
+                
+                plan.push({ ...meal, options: mealOptions, requiredCals });
+            });
+
+            return plan;
+        }
+
+        // --- Funções de Renderização do Resultado ---
+        
+        function renderSectionTitle(color, iconPath, title) {
+            // ... (Função inalterada) ...
+            
+            const userIconPath = 'M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3-.895-3-2 1.343-2 3-2zM9 12h6m-6 0h.01M17 12a5 5 0 11-10 0 5 5 0 0110 0z'; 
+            const activityIconPath = 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15';
+            const clockIconPath = 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z';
+            const workoutIconHome = 'M3 12l2-2m0 0l7-7 7 7M5 12h14';
+            const workoutIconGym = 'M9 19V6a1 1 0 011-1h4a1 1 0 011 1v13a1 1 0 01-1 1H9a1 1 0 01-1-1zM5 19h14';
+
+            let finalPath = '';
+            if (title.includes("Plano Sugerido")) {
+                finalPath = userIconPath;
+            } else if (title.includes("Distribuição")) {
+                finalPath = activityIconPath;
+            } else if (title.includes("Refeições")) {
+                finalPath = clockIconPath;
+            } else if (title.includes("Treino")) {
+                finalPath = iconPath; 
+            } else {
+                 finalPath = 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'; 
+            }
+
+
+            return `
+                <div class="flex items-center text-xl font-bold mb-4 mt-8 text-gray-700 dark:text-gray-200 border-b-2 border-gray-200 dark:border-gray-700 pb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-3 text-${color}-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${finalPath}" /></svg>
+                    ${title}
+                </div>
+            `;
+        }
+
+        function renderMacroCard(title, value, unit, color) {
+            return `
+                <div class="info-card p-4 rounded-xl shadow-lg flex-1 min-w-[120px] bg-white dark:bg-gray-800 border-b-4 border-${color}-500 transition duration-300 hover:shadow-xl">
+                    <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">${title}</h3>
+                    <p class="text-3xl font-bold text-${color}-600">${value}</p>
+                    <p class="text-xs text-gray-400 mt-0 dark:text-gray-500">${unit}</p>
+                </div>
+            `;
+        }
+
+        function renderMacroCards(result) {
+            const macroData = [
+                { title: "Proteínas", value: result.proteinGrams, unit: "gramas", color: "blue" },
+                { title: "Carboidratos", value: result.carbGrams, unit: "gramas", color: "orange" },
+                { title: "Gorduras", value: result.fatGrams, unit: "gramas", color: "red" },
+            ];
+            
+            const macroCards = macroData.map(d => renderMacroCard(d.title, d.value, d.unit, d.color)).join('');
+            
+            const percentP = ((result.proteinGrams * 4) / result.finalCals * 100).toFixed(0);
+            const percentC = ((result.carbGrams * 4) / result.finalCals * 100).toFixed(0);
+            const percentG = ((result.fatGrams * 9) / result.finalCals * 100).toFixed(0);
+            
+            const percentages = `
+                <div class="text-center text-sm text-gray-500 dark:text-gray-400 flex-1 min-w-[120px] pt-4">
+                    <p>P: ${percentP}%</p>
+                    <p>C: ${percentC}%</p>
+                    <p>G: ${percentG}%</p>
+                </div>
+            `;
+
+            return `<div class="flex flex-wrap gap-4 justify-between">${macroCards}${percentages}</div>`;
+        }
+
+        function renderCalorieSummary(result) {
+            const goalText = result.goal === 'mass' ? 'Ajustado em +15% para Ganho de Massa.' : result.goal === 'loss' ? 'Ajustado em -15% para Perda de Peso.' : 'Manutenção de Peso (Ajuste Neutro).';
+            
+            return `
+                <div class="info-card p-6 rounded-xl shadow-lg border-l-8 border-green-400 gradient-green dark:gradient-card">
+                    <p class="text-xl font-semibold calorie-text-light mb-3">Sua Necessidade Calórica</p>
+                    <div class="flex justify-between items-center text-sm calorie-text-light">
+                        <p>TDEE (Gasto Total): <span class="font-bold calorie-text-light">${result.tdee} kcal</span></p>
+                        <p>BMR (Metabolismo Basal): <span class="font-bold calorie-text-light">${result.bmr} kcal</span></p>
+                    </div>
+                    <p class="text-5xl font-extrabold calorie-text-light mt-2 text-center">
+                        ${result.finalCals} <span class="text-3xl font-semibold">kcal/dia</span>
+                    </p>
+                    <p class="text-sm text-center calorie-text-light mt-1">${goalText}</p>
+                </div>
+            `;
+        }
+
+        function renderMealOption(optionFoods, optionIndex, mealColor) {
+            const foodList = optionFoods.map(item => `
+                <li class="pl-3 border-l-4 border-dashed border-gray-200 py-1">
+                    <p class="text-base font-semibold text-gray-700 dark:text-gray-200">
+                        ${item.food} - <span class="font-bold text-lg text-green-600">${item.portion} ${item.unit}</span>
+                    </p>
+                    ${item.substitutes && item.substitutes.length > 0 ? `<p class="text-xs text-gray-400 mt-0">Substitutos: ${item.substitutes.join(', ')}</p>` : ''}
+                </li>
+            `).join('');
+
+            return `
+                <div class="info-card p-4 rounded-lg bg-white shadow-md border border-${mealColor}-200 dark:bg-gray-700 dark:border-gray-600">
+                    <h5 class="text-sm font-extrabold mb-2 text-${mealColor}-600">OPÇÃO ${optionIndex + 1}</h5>
+                    <ul class="space-y-1">${foodList}</ul>
+                </div>
+            `;
+        }
+
+        function renderMealItem(meal, color) {
+            return `
+                <div class="info-card p-4 rounded-xl bg-white border-2 border-${color}-100 shadow-md dark:bg-gray-800 dark:border-gray-700">
+                    <div class="flex items-center mb-3 pb-2 border-b border-gray-100 dark:border-gray-700 text-${color}-600">
+                        <div class="p-2 rounded-full bg-${color}-500 text-white mr-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <h4 class="text-xl font-bold">${meal.name} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(${meal.time} - Aprox. ${meal.requiredCals} kcal)</span></h4>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        ${meal.options.map((option, index) => renderMealOption(option, index, color)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDayPlan(dayPlan, color, setsAndReps) {
+            const exerciseList = dayPlan.exercises.map(m => `
+                <div class="mb-4 p-4 border-l-4 border-${color}-400 bg-white dark:bg-gray-700 rounded-md shadow-sm">
+                    <h5 class="text-lg font-bold text-gray-800 dark:text-gray-200">${m.muscle}</h5>
+                    <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                        ${m.exercises.map(ex => `<li>${ex} (${setsAndReps})</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+
+            return `
+                <div class="info-card p-4 rounded-xl bg-gray-50 border-2 border-dashed border-gray-300 dark:bg-gray-800">
+                    <h4 class="text-xl font-bold text-${color}-600 mb-3">${dayPlan.day} (${dayPlan.location === 'home' ? 'Casa' : 'Academia'})</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${exerciseList}
+                    </div>
+                </div>
+            `;
+        }
+
+
+        function renderWorkoutSection(result) {
+            if (!result.workoutPlan || result.workoutPlan.length === 0) return '';
+            
+            const workoutPlan = result.workoutPlan;
+            const location = workoutPlan[0].location; 
+            const iconPath = location === 'home' ? 'M3 12l2-2m0 0l7-7 7 7M5 12h14' : 'M9 19V6a1 1 0 011-1h4a1 1 0 011 1v13a1 1 0 01-1 1H9a1 1 0 01-1-1zM5 19h14';
+            
+            // LÓGICA DE SETS E REPS BASEADA NO OBJETIVO
+            let setsAndReps = '3 séries de 10-12 reps';
+            if (result.goal === 'mass') {
+                setsAndReps = '4 séries de 8-10 reps (Foco em Hipertrofia)';
+            } else if (result.goal === 'loss') {
+                setsAndReps = '3 séries de 15-20 reps (Foco em Resistência)';
+            }
+
+            return `
+                ${renderSectionTitle('purple', iconPath, "Plano Semanal de Treino")}
+                <div class="space-y-6">
+                    ${workoutPlan.map(dayPlan => renderDayPlan(dayPlan, 'purple', setsAndReps)).join('')}
+                </div>
+            `;
+        }
+
+
+        function renderResults(result) {
+            // Esconde a mensagem inicial e mostra os resultados
+            initialMessage.classList.add('hidden');
+            dietResultsContainer.classList.remove('hidden');
+
+            const name = document.getElementById('name').value.trim() || 'Usuário';
+
+            dietResultsContainer.innerHTML = `
+                <div id="printable-area" class="space-y-10">
+                    ${renderSectionTitle('green', 'M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3-.895-3-2 1.343-2 3-2zM9 12h6m-6 0h.01M17 12a5 5 0 11-10 0 5 5 0 0110 0z', `Plano Sugerido: ${name}`)}
+                    
+                    ${renderCalorieSummary(result)}
+                    
+                    ${renderSectionTitle('green', 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', "Distribuição de Macronutrientes")}
+                    ${renderMacroCards(result)}
+
+                    <div class="flex justify-between items-center">
+                        ${renderSectionTitle('indigo', 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', "Plano Detalhado de Refeições")}
+                        <button id="refresh-meals-btn" class="flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition duration-150" title="Gerar novas sugestões de alimentos (mantendo os cálculos)">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Alternar Sugestões
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        ${result.mealPlan.map((meal, index) => renderMealItem(meal, index % 2 === 0 ? 'indigo' : 'gray')).join('')}
+                    </div>
+
+                    ${renderWorkoutSection(result)}
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-8 border-t border-gray-200 dark:border-gray-700">
+                    <button class="py-3 px-6 border border-indigo-500 text-indigo-600 font-bold rounded-lg hover:bg-indigo-50 transition duration-150 dark:hover:bg-gray-700 dark:text-indigo-400">
+                        Salvar Plano
+                    </button>
+                    <button id="print-plan-btn" class="py-3 px-6 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+                        Imprimir Plano (PDF)
+                    </button>
+                </div>
+            `;
+            // Adiciona o listener para o botão de refresh
+            document.getElementById('refresh-meals-btn').addEventListener('click', handleRefreshMeals);
+            // NOVO: Adiciona o listener para o botão de Impressão
+            document.getElementById('print-plan-btn').addEventListener('click', printPlan);
+        }
+
+        // --- LÓGICA DE CÁLCULO E AÇÃO ---
+
+        // NOVO: BASE DE COMBINAÇÕES FIXAS
+        const MealCombos = [
+            // Opções de Proteína Principal (Para Almoço/Jantar)
+            { type: 'protein_main', foods: ["Peito de Frango (150g)", "Carne Moída Magra (150g)", "Filé de Tilápia Assada (150g)", "Ovos (4 unid)"], tags: ['poultry', 'red_meat', 'fish', 'egg'], substitutes: ["Tofu (150g)"] },
+            
+            // Opções de Carboidrato Principal (Para Almoço/Jantar)
+            { type: 'carb_main', foods: ["Arroz Integral (3 colheres)", "Arroz Branco (3 colheres)", "Batata Doce Média", "Mandioca (150g)"], tags: ['grain', 'carb'], substitutes: ["2 Colheres de Arroz", "1 Batata Média"] },
+            
+            // Opções de Feijão/Legumes
+            { type: 'legume_veg', foods: ["Feijão (1 concha)", "Lentilha (1 concha)", "Salada e Legumes à vontade", "Brócolis Cozido à vontade"], tags: ['legume', 'vegetable'], substitutes: ["Salada Mista"] },
+
+            // Opções de Café da Manhã/Lanche (Proteína)
+            { type: 'breakfast_protein', foods: ["3 Ovos Cozidos/Mexidos", "Queijo Cottage/Requeijão Light (1 colher)", "Iogurte Natural (170g)", "1 scoop de Whey"], tags: ['egg', 'dairy', 'protein'], substitutes: ["Leite de Amêndoas"] },
+            
+            // Opções de Café da Manhã/Lanche (Carboidrato)
+            { type: 'breakfast_carb', foods: ["1 Tapioca média", "Pão Integral (1 fatia)", "Aveia (40g)", "1 fruta (banana ou mamão)"], tags: ['grain', 'carb', 'fruit'], substitutes: ["Cuscuz (100g)"] },
+
+            // Opções de Lanches/Ceia Adicionais
+            { type: 'snack_extra', foods: ["1 punhado pequeno de Castanhas", "1 copo de Leite Desnatado", "1 Pêra", "1 Maçã"], tags: ['fat', 'dairy', 'fruit'], substitutes: ["Mix de Frutas"] },
+        ];
+
+
+        function printPlan() {
+            // Usa a função nativa de impressão do navegador, que é a mais estável para PDF.
+            window.print();
+        }
+        
+        function generateWorkoutPlan(location, age) {
+            let focus = age >= 50 ? 'estabilidade' : 'geral';
+            
+            // Grupos Musculares para o Split
+            const workoutSplit = [];
+            const trainingDays = 3; 
+
+            for (let day = 1; day <= trainingDays; day++) {
+                
+                let targetMuscles = [];
+                let dayName;
+
+                // Lógica de Divisão (Split) Clássica 
+                if (day === 1) { // Dia 1: Empurrar (Push)
+                    targetMuscles = ['Peito', 'Tríceps', 'Ombro'];
+                    dayName = "Dia 1: Empurrar (Push)";
+                } else if (day === 2) { // Dia 2: Puxar e Pernas
+                    targetMuscles = ['Costas', 'Bíceps', 'Perna'];
+                    dayName = "Dia 2: Puxar/Pernas (Pull/Legs)";
+                } else if (day === 3) { // Dia 3: Pernas & Misto 
+                    targetMuscles = ['Perna', 'Ombro', 'Peito']; 
+                    dayName = "Dia 3: Pernas & Misto";
+                }
+
+                const exercisesForDay = [];
+                
+                // Seleciona 3 a 4 exercícios por grupo muscular
+                targetMuscles.forEach(muscle => {
+                    // Filtra o banco de dados
+                    const options = workoutDatabase.filter(w => 
+                        w.muscle === muscle && 
+                        w.location === location && 
+                        (w.age_min <= age || w.focus === focus)
+                    );
+                    
+                    if (options.length > 0) {
+                        // Seleciona um plano base (baseado no foco)
+                        const planBase = options.find(o => o.focus === focus) || options[0];
+                        
+                        // Adiciona o nome do músculo e sorteia 3 exercícios
+                        exercisesForDay.push({
+                            muscle: muscle,
+                            exercises: planBase.exercises.sort(() => 0.5 - Math.random()).slice(0, 3), // Sorteia 3
+                            location: location
+                        });
+                    }
+                });
+
+                workoutSplit.push({ day: dayName, exercises: exercisesForDay, location: location });
+            }
+
+            return workoutSplit;
+        }
+
+        // LÓGICA REFORMADA DE GERAÇÃO DE REFEIÇÕES (BASEADA EM COMBOS FIXOS)
+        function generateMealPlan(finalCals, goal, excludedTags, age) {
+            const plan = [];
+            const numOptions = 3;
+
+            // Função para buscar um item aleatório de uma combinação
+            const getComboItem = (type, usedSet) => {
+                const combo = MealCombos.find(c => c.type === type);
+                if (!combo) return null;
+
+                // Filtra itens que já foram usados no set (garante a variedade)
+                const available = combo.foods.filter(food => !usedSet.has(food));
+
+                if (available.length === 0) return null;
+
+                const randomIndex = Math.floor(Math.random() * available.length);
+                const selectedFood = available[randomIndex];
+                
+                usedSet.add(selectedFood); // Marca como usado na Meal (Opção 1, 2, 3)
+
+                // Simulação de porção fixa (adaptado do seu plano ideal)
+                let portion = 1; 
+                let unit = 'unidade';
+                if (selectedFood.includes('(150g)') || selectedFood.includes('(100g)')) {
+                    portion = 150; unit = 'g';
+                } else if (selectedFood.includes('(colheres)')) {
+                    portion = 3; unit = 'colheres';
+                } else if (selectedFood.includes('(fat') || selectedFood.includes('(50g)')) {
+                    portion = 50; unit = 'g';
+                }
+                
+                return { food: selectedFood, portion, unit, substitutes: combo.substitutes || [] };
+            };
+
+
+            MealSchedule.forEach(meal => {
+                const requiredCals = Math.round(finalCals * meal.factor);
+                const mealOptions = [];
+                
+                // CORREÇÃO: Rastreia alimentos USADOS EM TODAS AS 3 OPÇÕES DESTA REFEIÇÃO
+                const usedFoodsInMeal = new Set(); 
+
+                for (let i = 0; i < numOptions; i++) {
+                    const mealFoods = [];
+                    
+                    // --- Lógica de Combinação Estruturada (Imita seu plano ideal) ---
+
+                    if (meal.name === "Café da Manhã") {
+                        // 1. Proteína de Café (Ovo, Queijo)
+                        const prot = getComboItem('breakfast_protein', usedFoodsInMeal);
+                        if (prot) mealFoods.push(prot);
+
+                        // 2. Carboidrato de Café (Pão, Tapioca, Fruta)
+                        const carb = getComboItem('breakfast_carb', usedFoodsInMeal);
+                        if (carb) mealFoods.push(carb);
+
+                        // 3. Lanche Extra (Castanhas)
+                        const extra = getComboItem('snack_extra', usedFoodsInMeal);
+                        if (extra) mealFoods.push(extra);
+                        
+                    } else if (meal.name === "Almoço" || meal.name === "Jantar") {
+                        
+                        // 1. Proteína Principal (Frango/Carne/Peixe)
+                        const prot = getComboItem('protein_main', usedFoodsInMeal);
+                        if (prot) mealFoods.push(prot);
+                        
+                        // 2. Carboidrato Principal (Arroz/Batata)
+                        const carb = getComboItem('carb_main', usedFoodsInMeal);
+                        if (carb) mealFoods.push(carb);
+                        
+                        // 3. Feijão / Legumes
+                        const legume = getComboItem('legume_veg', usedFoodsInMeal);
+                        if (legume) mealFoods.push(legume);
+                        
+                        // 4. Salada
+                        mealFoods.push({ food: "Salada e Legumes à vontade + 1 fio de Azeite", portion: 1, unit: 'porção' });
+                        
+                    } else if (meal.name === "Lanche da Manhã" || meal.name === "Ceia") {
+                        
+                        // Lanche: Prioriza opções leves de proteína e frutas/castanhas
+                        const prot = getComboItem('breakfast_protein', usedFoodsInMeal);
+                        if (prot) mealFoods.push(prot);
+                        
+                        const extra = getComboItem('snack_extra', usedFoodsInMeal);
+                        if (extra) mealFoods.push(extra);
+                    
+                    } else if (meal.name === "Lanche da Tarde") {
+                        // Lanche da Tarde / Pré-treino
+                        const carb = getComboItem('pre_workout', usedFoodsInMeal); // Banana e aveia
+                        if (carb) mealFoods.push(carb);
+                        
+                        // Adiciona opção extra de lanche
+                        mealFoods.push({ food: "1 Sanduíche Natural (Pão integral, Frango ou Atum)", portion: 1, unit: 'unidade' });
+                    }
+                    
+                    if (mealFoods.length > 0) {
+                        mealOptions.push(mealFoods);
+                    } else {
+                        mealOptions.push([{ food: "Nenhuma sugestão compatível. Verifique restrições.", portion: 0, unit: '', substitutes: [] }]);
+                    }
+                }
+                
+                plan.push({ ...meal, options: mealOptions, requiredCals });
+            });
+
+            return plan;
+        }
+
+        function calculateDiet(event) {
+            try {
+                event.preventDefault();
+                
+                // NOVO: Coletando o local de treino
+                const trainingLocation = document.getElementById('trainingLocation').value;
+
+                const age = parseInt(document.getElementById('age').value);
+                const height = parseInt(document.getElementById('height').value);
+                const weight = parseFloat(document.getElementById('weight').value);
+                const sex = document.getElementById('sex').value;
+                const goal = document.getElementById('goal').value;
+                const activityLevel = document.getElementById('activityLevel').value;
+                
+                // Validação já feita pelo HTML5 (required)
+                if (isNaN(age) || isNaN(height) || isNaN(weight) || weight <= 0 || age < 18) {
+                    alert("Por favor, preencha todos os dados básicos corretamente (idade mínima 18 anos).");
+                    return;
+                }
+
+                const factor = activityFactors[activityLevel] || 1.55;
+                let bmr;
+
+                // Fórmula de Mifflin-St Jeor
+                if (sex === 'male') {
+                    bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+                } else {
+                    bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+                }
+
+                let tdee = bmr * factor;
+                let finalCals = tdee;
+                if (goal === 'mass') {
+                    finalCals *= 1.15;
+                } else if (goal === 'loss') {
+                    finalCals *= 0.85;
+                }
+
+                // Distribuição de Macros
+                let proteinPct = goal === 'mass' ? 0.35 : goal === 'loss' ? 0.30 : 0.25;
+                let carbPct = goal === 'mass' ? 0.45 : goal === 'loss' ? 0.40 : 0.50;
+                let fatPct = 1 - proteinPct - carbPct;
+
+                const proteinGrams = Math.round((finalCals * proteinPct) / 4);
+                const carbGrams = Math.round((finalCals * carbPct) / 4);
+                const fatGrams = Math.round((finalCals * fatPct) / 9);
+                
+                const excludedTags = userPreferences.flatMap(prefName => 
+                    preferenceOptions.find(opt => opt.name === prefName)?.tagsToExclude || []
+                );
+
+                const mealPlan = generateMealPlan(finalCals, goal, excludedTags, age);
+                
+                // NOVO: Gerando plano de treino
+                const workoutPlan = generateWorkoutPlan(trainingLocation, age);
+                
+                currentDietData = {
+                    tdee: Math.round(tdee),
+                    finalCals: Math.round(finalCals),
+                    proteinGrams,
+                    carbGrams,
+                    fatGrams,
+                    goal,
+                    bmr: Math.round(bmr),
+                    mealPlan,
+                    age,
+                    workoutPlan // Adiciona o plano de treino
+                };
+                
+                renderResults(currentDietData);
+                
+            } catch (error) {
+                console.error("Erro ao gerar dieta:", error);
+                alert("Ocorreu um erro interno ao gerar o plano. Tente recarregar a página.");
+            }
+        }
+
+        function handleRefreshMeals() {
+            if (!currentDietData) return;
+
+            const goal = document.getElementById('goal').value;
+            const finalCals = currentDietData.finalCals;
+            const age = parseInt(document.getElementById('age').value);
+            
+            const excludedTags = userPreferences.flatMap(prefName => 
+                preferenceOptions.find(opt => opt.name === prefName)?.tagsToExclude || []
+            );
+
+            // Refaz a geração de refeições com as mesmas calorias
+            const newMealPlan = generateMealPlan(finalCals, goal, excludedTags, age);
+            currentDietData.mealPlan = newMealPlan;
+            
+            renderResults(currentDietData);
+        }
+
+        // --- INICIALIZAÇÃO E EVENT LISTENERS ---
+
+        // Event Listener do Dark Mode
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+
+        // Event Listener do Formulário de Cálculo
+        dietForm.addEventListener('submit', calculateDiet);
+        
+        // Renderiza as preferências ao carregar a página
+        window.onload = renderPreferences;
+
+        // TENTA CORRIGIR PROBLEMAS DE SELEÇÃO NO INÍCIO
+        document.addEventListener('DOMContentLoaded', () => {
+             // Força a atualização dos valores iniciais
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => {
+                select.value = select.options[select.selectedIndex].value;
+            });
+        });
+    </script>
+</body>
+</html>
