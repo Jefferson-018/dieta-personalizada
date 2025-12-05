@@ -253,7 +253,7 @@
 
         const preferenceOptions = [
             { name: 'dairy_free', label: 'Sem Laticínios', tagsToExclude: ['dairy', 'lactose'] },
-            { name: 'no_red_meat', label: 'Sem Carne Vermelha', tagsToToExclude: ['red_meat'] },
+            { name: 'no_red_meat', label: 'Sem Carne Vermelha', tagsToExclude: ['red_meat'] },
             { name: 'no_poultry', label: 'Sem Aves', tagsToExclude: ['poultry'] },
             { name: 'no_fish', label: 'Sem Peixe', tagsToExclude: ['fish'] },
             { name: 'vegetarian', label: 'Vegetariano', tagsToExclude: ['poultry', 'red_meat', 'fish', 'egg'] },
@@ -308,6 +308,29 @@
             active: 1.725,
             veryActive: 1.9,
         };
+        
+        // NOVO: BASE DE COMBINAÇÕES FIXAS
+        const MealCombos = [
+            // Opções de Proteína Principal (Para Almoço/Jantar)
+            { type: 'protein_main', foods: ["Peito de Frango (150g)", "Carne Moída Magra (150g)", "Filé de Tilápia Assada (150g)", "Ovos (4 unid)"], tags: ['poultry', 'red_meat', 'fish', 'egg'], substitutes: ["Tofu (150g)"] },
+            
+            // Opções de Carboidrato Principal (Para Almoço/Jantar)
+            { type: 'carb_main', foods: ["Arroz Integral (3 colheres)", "Arroz Branco (3 colheres)", "Batata Doce Média", "Mandioca (150g)"], tags: ['grain', 'carb'], substitutes: ["2 Colheres de Arroz", "1 Batata Média"] },
+            
+            // Opções de Feijão/Legumes
+            { type: 'legume_veg', foods: ["Feijão (1 concha)", "Lentilha (1 concha)", "Salada e Legumes à vontade", "Brócolis Cozido à vontade"], tags: ['legume', 'vegetable'], substitutes: ["Salada Mista"] },
+
+            // Opções de Café da Manhã/Lanche (Proteína)
+            { type: 'breakfast_protein', foods: ["3 Ovos Cozidos/Mexidos", "Queijo Cottage/Requeijão Light (1 colher)", "Iogurte Natural (170g)", "1 scoop de Whey"], tags: ['egg', 'dairy', 'protein'], substitutes: ["Leite de Amêndoas"] },
+            
+            // Opções de Café da Manhã/Lanche (Carboidrato)
+            { type: 'breakfast_carb', foods: ["1 Tapioca média", "Pão Integral (1 fatia)", "Aveia (40g)", "1 fruta (banana ou mamão)"], tags: ['grain', 'carb', 'fruit'], substitutes: ["Cuscuz (100g)"] },
+
+            // Opções de Lanches/Ceia Adicionais
+            { type: 'snack_extra', foods: ["1 punhado pequeno de Castanhas", "1 copo de Leite Desnatado", "1 Pêra", "1 Maçã"], tags: ['fat', 'dairy', 'fruit'], substitutes: ["Mix de Frutas"] },
+        ];
+
+
         
         // === ELEMENTOS DO DOM ===
         const dietForm = document.getElementById('diet-form');
@@ -423,26 +446,7 @@
                 return { food: selectedFood, portion, unit: unit, substitutes: combo.substitutes || [] };
             };
             
-            // CORREÇÃO: Função para buscar item de foodDatabase e garantir exclusão entre opções
-            const getUniqueFoodFromDB = (filterTags, usedIds) => {
-                const restricted = meal.restrictedTags || [];
-                
-                const filteredList = availableFoods.filter(f => 
-                    !usedIds.has(f.id) &&
-                    f.tags.some(tag => filterTags.includes(tag)) &&
-                    !f.tags.some(tag => restricted.includes(tag))
-                );
-
-                if (filteredList.length === 0) return null;
-                
-                const randomIndex = Math.floor(Math.random() * filteredList.length);
-                const selectedFood = filteredList[randomIndex];
-                
-                usedIds.add(selectedFood.id);
-                return selectedFood;
-            }
-
-
+            
             MealSchedule.forEach(meal => {
                 const requiredCals = Math.round(finalCals * meal.factor);
                 const mealOptions = [];
@@ -453,9 +457,6 @@
                 for (let i = 0; i < numOptions; i++) {
                     const mealFoods = [];
                     
-                    // Rastreia IDs para garantir a diversidade DENTRO desta opção
-                    const currentOptionUsedIds = new Set(); 
-
                     // --- Lógica de Combinação Estruturada ---
 
                     if (meal.name === "Café da Manhã") {
